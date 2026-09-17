@@ -3,8 +3,9 @@ FROM php:8.2-apache
 # Install ekstensi PHP yang diperlukan
 RUN docker-php-ext-install pdo pdo_mysql
 
-# Aktifkan mod_rewrite Apache
-RUN a2enmod rewrite
+# Fix: nonaktifkan mpm_event/mpm_worker, aktifkan mpm_prefork + rewrite
+RUN a2dismod mpm_event mpm_worker; \
+    a2enmod mpm_prefork rewrite
 
 # Set DocumentRoot ke public_html/
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public_html
