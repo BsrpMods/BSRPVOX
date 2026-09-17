@@ -2,18 +2,13 @@
 // public_html/api/activate.php
 if (!isset($_GET['webview2'])) header("Content-Type: application/json");
 else header("Content-Type: text/html");
-require_once __DIR__ . '/../../config/db.php';
+require_once "../server/config/db.php";
 
-// Baca private key dari env var (Vercel) atau dari file (hosting tradisional)
-$rsa_key_env = getenv('RSA_PRIVATE_KEY');
-$private_key_path = __DIR__ . '/../../keys/private_key.pem';
-if ($rsa_key_env) {
-    $private_key = $rsa_key_env;
-} elseif (file_exists($private_key_path)) {
-    $private_key = file_get_contents($private_key_path);
-} else {
+$private_key_path = "../server/keys/private_key.pem";
+if (!file_exists($private_key_path)) {
     die(json_encode(["success" => false, "error" => "SERVER_KEY_ERROR"]));
 }
+$private_key = file_get_contents($private_key_path);
 
 $input = $_REQUEST;
 if (empty($input['token']) || empty($input['device_id'])) {

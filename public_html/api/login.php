@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../server/config/db.php';
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -139,20 +139,12 @@ try {
         "timestamp" => time()
     ]);
 
-    // Baca private key dari env var (Vercel) atau dari file (hosting tradisional)
-    $rsa_key_env = getenv('RSA_PRIVATE_KEY');
-    $private_key_path = __DIR__ . '/../../keys/private_key.pem';
-    if ($rsa_key_env) {
-        $private_key = openssl_pkey_get_private($rsa_key_env);
-    } elseif (file_exists($private_key_path)) {
-        $private_key = openssl_pkey_get_private(file_get_contents($private_key_path));
-    } else {
-        $private_key = null;
-    }
-
-    if (!$private_key) {
+    $private_key_path = __DIR__ . '/../server/keys/private_key.pem';
+    if (!file_exists($private_key_path)) {
+        // Fallback to empty if not setup, though ideally should throw error
         $signature = base64_encode(hash_hmac('sha256', $payload, 'BSRP_SECRET'));
     } else {
+        $private_key = openssl_pkey_get_private(file_get_contents($private_key_path));
         openssl_sign($payload, $signature_raw, $private_key, OPENSSL_ALGO_SHA256);
         $signature = base64_encode($signature_raw);
     }
