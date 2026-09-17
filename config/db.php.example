@@ -1,0 +1,54 @@
+<?php
+// config/db.php.example
+// -------------------------------------------------------
+// INSTRUKSI SETUP:
+// 1. Salin file ini menjadi "db.php" di folder yang sama
+//    cp config/db.php.example config/db.php
+// 2. Isi nilai di bawah sesuai dengan kredensial server Anda
+// 3. JANGAN commit file "db.php" ke Git (sudah ada di .gitignore)
+// -------------------------------------------------------
+
+$db_host = "localhost";           // Host database (biasanya localhost)
+$db_user = "your_db_username";   // Username database
+$db_pass = "your_db_password";   // Password database
+$db_name = "your_db_name";       // Nama database (contoh: bsrp_license)
+
+try {
+    $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8mb4", $db_user, $db_pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    header("Content-Type: application/json");
+    die(json_encode(["success" => false, "error" => "DB_CONNECTION_FAILED"]));
+}
+
+function getClientIp() {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        return $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        return $_SERVER['HTTP_X_FORWARDED_FOR'];
+    } else {
+        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+}
+
+// Fungsi untuk log aktivitas
+function logAction($pdo, $username, $device_id_str, $event, $reason) {
+    // Resolve user_id
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $stmt->execute([$username]);
+    $user_id = $stmt->fetchColumn() ?: null;
+
+    // Resolve device_id (bigint)
+    $device_id = null;
+    if ($user_id) {
+        $stmt = $pdo->prepare("SELECT id FROM devices WHERE user_id = ? AND device_id = ?");
+        $stmt->execute([$user_id, $device_id_str]);
+        $device_id = $stmt->fetchColumn() ?: null;
+    }
+
+    $metadata = json_encode(["reason" => $reason, "device_string" => $device_id_str]);
+    
+    $stmt = $pdo->prepare("INSERT INTO activation_logs (user_id, device_id, event, ip_address, metadata) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$user_id, $device_id, $event, getClientIp(), $metadata]);
+}

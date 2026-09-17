@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BSRP Account Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+    <div id="login-screen" class="min-h-screen flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-md w-96">
+            <h1 class="text-2xl font-bold mb-6 text-center">BSRP Admin</h1>
+            <input id="username" type="text" placeholder="Username" class="w-full mb-4 px-4 py-2 border rounded">
+            <input id="password" type="password" placeholder="Password" class="w-full mb-6 px-4 py-2 border rounded">
+            <button onclick="login()" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Login</button>
+            <p id="login-error" class="text-red-500 mt-4 hidden"></p>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden min-h-screen p-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold">Account Manager</h1>
+                <button onclick="logout()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Logout</button>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4 mb-8">
+                <div class="bg-white p-6 rounded shadow"><h3 class="text-gray-500">Total Accounts</h3><p id="stat-total" class="text-3xl font-bold">0</p></div>
+                <div class="bg-white p-6 rounded shadow"><h3 class="text-gray-500">Active</h3><p id="stat-active" class="text-3xl text-green-600 font-bold">0</p></div>
+                <div class="bg-white p-6 rounded shadow"><h3 class="text-gray-500">Suspended</h3><p id="stat-suspended" class="text-3xl text-red-600 font-bold">0</p></div>
+            </div>
+
+            <div class="bg-white rounded shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">User Accounts</h2>
+                    <div class="flex space-x-2">
+                        <select id="plan_select" class="border rounded px-3 py-2 bg-gray-50">
+                            <option value="1">1 Device Plan</option>
+                            <option value="2">2 Devices Plan</option>
+                        </select>
+                        <button onclick="generateToken()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Generate Account</button>
+                    </div>
+                </div>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="py-2">Username</th>
+                            <th>Status</th>
+                            <th>Device ID</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function checkAuth() {
+            let res = await fetch('../api/admin/login.php?action=check').then(r => r.json());
+            if(res.success) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                loadData();
+            }
+        }
+        
+        async function login() {
+            let u = document.getElementById('username').value;
+            let p = document.getElementById('password').value;
+            let res = await fetch(`../api/admin/login.php?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`).then(r => r.json());
+            if(res.success) checkAuth();
+            else {
+                let e = document.getElementById('login-error');
+                e.innerText = "Invalid credentials";
+                e.classList.remove('hidden');
+            }
+        }
+
+        async function logout() {
+            await fetch('../api/admin/login.php?action=logout');
+            location.reload();
+        }
+
+        async function loadData() {
+            let res = await fetch('../api/admin/list-licenses.php').then(r => r.json());
+            if(res.success) {
+                let tbody = document.getElementById('table-body');
+                tbody.innerHTML = '';
+                let total=0, active=0, suspended=0;
+                res.data.forEach(row => {
+                    total++;
+                    if(row.status === 'ACTIVE') active++;
+                    if(row.status === 'SUSPENDED') suspended++;
+                    
+                    let tr = document.createElement('tr');
+                    tr.className = "border-b";
+                    tr.innerHTML = `
+                        <td class="py-3">
+                            <div class="font-mono font-bold">${row.license_key}</div>
+                            <div class="font-mono text-xs text-gray-500 mt-1">${row.plain_password || 'Hidden'}</div>
+                        </td>
+                        <td><span class="px-2 py-1 rounded text-xs font-bold ${row.status==='ACTIVE'?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}">${row.status}</span></td>
+                        <td class="font-mono text-sm text-gray-500">${row.device_id || '-'}</td>
+                        <td class="text-sm">${row.created_at}</td>
+                        <td>
+                            <button onclick="navigator.clipboard.writeText('Username: ${row.license_key}\\nPassword: ${row.plain_password || 'Hidden'}')" class="text-blue-600 hover:underline mr-2 text-sm">Copy</button>
+                            ${row.status === 'ACTIVE' ? `<button onclick="resetDevice(${row.id})" class="text-orange-600 hover:underline mr-2 text-sm">Reset Device</button>` : ''}
+                            ${row.status !== 'SUSPENDED' ? `<button onclick="revokeLicense(${row.id})" class="text-red-600 hover:underline text-sm">Suspend</button>` : ''}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                document.getElementById('stat-total').innerText = total;
+                document.getElementById('stat-active').innerText = active;
+                document.getElementById('stat-suspended').innerText = suspended;
+            }
+        }
+
+        async function generateToken() {
+            let plan_id = document.getElementById('plan_select').value;
+            let res = await fetch(`../api/admin/create-license.php?plan_id=${plan_id}`).then(r => r.json());
+            if(res.success) {
+                alert("Account created successfully!\n\nCredentials:\n" + res.token + "\n\nPlease copy and save this now. You cannot view the password again.");
+                loadData();
+            }
+        }
+
+        async function revokeLicense(id) {
+            if(!confirm("Are you sure you want to suspend this account?")) return;
+            let res = await fetch(`../api/admin/revoke-license.php?id=${id}`).then(r => r.json());
+            if(res.success) loadData();
+        }
+
+        async function resetDevice(id) {
+            if(!confirm("Remove device binding for this account?")) return;
+            let res = await fetch(`../api/admin/reset-device.php?id=${id}`).then(r => r.json());
+            if(res.success) loadData();
+        }
+
+        window.onload = checkAuth;
+    </script>
+</body>
+</html>

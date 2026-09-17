@@ -1,0 +1,48 @@
+# =============================================================
+# BSRP Vox Server — .gitignore
+# =============================================================
+
+# -------------------------------------------------------
+# Konfigurasi Database (berisi kredensial)
+# → Gunakan config/db.php.example sebagai template
+# -------------------------------------------------------
+config/db.php
+server/config/db.php
+
+# -------------------------------------------------------
+# RSA Private Key (SANGAT RAHASIA — jangan pernah di-commit)
+# → Generate sendiri menggunakan keys/generate_keys.php
+# -------------------------------------------------------
+keys/private_key.pem
+keys/*.pem
+keys/*.pub
+
+# -------------------------------------------------------
+# File Testing / Developer Tools
+# (berisi path absolut dan bukan bagian dari produksi)
+# -------------------------------------------------------
+test_key.php
+test_login.php
+
+# -------------------------------------------------------
+# File Sementara / Upload
+# -------------------------------------------------------
+*.log
+*.tmp
+uploads/
+
+# -------------------------------------------------------
+# OS & IDE Files
+# -------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# -------------------------------------------------------
+# Composer (jika ditambahkan di masa depan)
+# -------------------------------------------------------
+vendor/
+composer.lock
