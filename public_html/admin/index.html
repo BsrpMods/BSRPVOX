@@ -56,8 +56,17 @@
         </div>
     </div>
     <script>
+        // Helper: tambahkan X-Admin-Token ke setiap request
+        function authFetch(url, options = {}) {
+            const token = localStorage.getItem('admin_token') || '';
+            return fetch(url, {
+                ...options,
+                headers: { ...(options.headers || {}), 'X-Admin-Token': token }
+            });
+        }
+
         async function checkAuth() {
-            let res = await fetch('../api/admin/login.php?action=check').then(r => r.json());
+            let res = await authFetch('../api/admin/login.php?action=check').then(r => r.json());
             if(res.success) {
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('dashboard').classList.remove('hidden');
@@ -69,8 +78,10 @@
             let u = document.getElementById('username').value;
             let p = document.getElementById('password').value;
             let res = await fetch(`../api/admin/login.php?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`).then(r => r.json());
-            if(res.success) checkAuth();
-            else {
+            if(res.success) {
+                localStorage.setItem('admin_token', res.token);
+                checkAuth();
+            } else {
                 let e = document.getElementById('login-error');
                 e.innerText = "Invalid credentials";
                 e.classList.remove('hidden');
@@ -78,12 +89,13 @@
         }
 
         async function logout() {
-            await fetch('../api/admin/login.php?action=logout');
+            await authFetch('../api/admin/login.php?action=logout');
+            localStorage.removeItem('admin_token');
             location.reload();
         }
 
         async function loadData() {
-            let res = await fetch('../api/admin/list-licenses.php').then(r => r.json());
+            let res = await authFetch('../api/admin/list-licenses.php').then(r => r.json());
             if(res.success) {
                 let tbody = document.getElementById('table-body');
                 tbody.innerHTML = '';
@@ -119,7 +131,7 @@
 
         async function generateToken() {
             let plan_id = document.getElementById('plan_select').value;
-            let res = await fetch(`../api/admin/create-license.php?plan_id=${plan_id}`).then(r => r.json());
+            let res = await authFetch(`../api/admin/create-license.php?plan_id=${plan_id}`).then(r => r.json());
             if(res.success) {
                 alert("Account created successfully!\n\nCredentials:\n" + res.token + "\n\nPlease copy and save this now. You cannot view the password again.");
                 loadData();
@@ -128,13 +140,13 @@
 
         async function revokeLicense(id) {
             if(!confirm("Are you sure you want to suspend this account?")) return;
-            let res = await fetch(`../api/admin/revoke-license.php?id=${id}`).then(r => r.json());
+            let res = await authFetch(`../api/admin/revoke-license.php?id=${id}`).then(r => r.json());
             if(res.success) loadData();
         }
 
         async function resetDevice(id) {
             if(!confirm("Remove device binding for this account?")) return;
-            let res = await fetch(`../api/admin/reset-device.php?id=${id}`).then(r => r.json());
+            let res = await authFetch(`../api/admin/reset-device.php?id=${id}`).then(r => r.json());
             if(res.success) loadData();
         }
 

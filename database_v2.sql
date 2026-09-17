@@ -82,6 +82,18 @@ CREATE TABLE admin_users (
     last_login DATETIME NULL
 );
 
+CREATE TABLE admin_sessions (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    admin_id BIGINT UNSIGNED NOT NULL,
+    token VARCHAR(128) NOT NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL,
+    CONSTRAINT fk_admin_sessions_admin
+        FOREIGN KEY (admin_id)
+        REFERENCES admin_users(id)
+        ON DELETE CASCADE
+);
+
 -- Insert Default Plan
 INSERT INTO plans (name, max_devices) VALUES ('BSRP Vox 1 Device', 1);
 INSERT INTO plans (name, max_devices) VALUES ('BSRP Vox 2 Devices', 2);
