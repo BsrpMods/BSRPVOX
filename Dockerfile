@@ -3,9 +3,12 @@ FROM php:8.2-apache
 # Install ekstensi PHP yang diperlukan
 RUN docker-php-ext-install pdo pdo_mysql
 
-# Fix MPM conflict: nonaktifkan mpm_event, aktifkan mpm_prefork
-RUN a2dismod mpm_event mpm_worker; \
-    a2enmod mpm_prefork rewrite
+# Fix MPM conflict: hapus semua MPM symlinks, aktifkan hanya mpm_prefork
+RUN rm -f /etc/apache2/mods-enabled/mpm_*.load \
+          /etc/apache2/mods-enabled/mpm_*.conf \
+    && ln -s /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
+    && ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf \
+    && a2enmod rewrite
 
 # Salin semua file proyek ke container
 COPY . /var/www/html/
